@@ -1,66 +1,104 @@
-# CephaloShell
+# 🐙 CephaloShell
 
-## Overview
+> **CephaloShell** est un outil CLI interactif et modulaire en PowerShell conçu pour simplifier l'administration système, le diagnostic réseau et la gestion quotidienne d'un domaine Active Directory (AD).
 
-This script provides a menu-driven interface to perform various network and system management tasks. It is written in PowerShell and offers functionalities such as SSH connections, IP configuration display, network diagnostics, Active Directory management, WSUS reset, and more.
+---
 
-## How to Use
+## 📸 Aperçu
 
-1. **Launch the Script**: Run the script in a PowerShell environment.
-2. **Menu Navigation**: 
-   - You will be presented with a main menu.
-   - Enter the number corresponding to the task you wish to perform.
-   - Follow the on-screen prompts to complete your task.
-3. **Quit**: To exit the script, enter `q` at any menu prompt.
+CephaloShell repose sur un menu interactif dynamique habillé d'une mascotte poulpe en ASCII Art. Il permet d'exécuter rapidement des tâches d'administration locales et distantes sans avoir à ressaisir manuellement de longues commandes PowerShell.
 
-## Main Menu Options
+```text
+⠀⠀⠀⠀⠀⠀⢀⣀⣠⣀⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣷⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⢠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀⠀⠀⠀⣠⣶⣾⣷⣶⣄⠀⠀⠀⠀⠀
+⠀⠀⠀⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⠀⠀⢰⣿⠟⠉⠻⣿⣿⣷⠀⠀⠀⠀
+⠀⠀⠀⠈⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⢷⣄⠘⠿⠀⠀⠀⢸⣿⣿⡆⠀⠀⠀
+⠀⠀⠀⠀⠈⠿⣿⣿⣿⣿⣿⣀⣸⣿⣷⣤⣴⠟⠀⠀⠀⠀⢀⣼⣿⣿⠁⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠈⠙⣛⣿⣿⣿⣿⣿⣿⣿⣿⣦⣀⣀⣀⣴⾾⣿⣿⡟⠀⠀⠀⠀
+```
 
-1. **SSH Connection**: 
-   - Allows you to remotely execute commands on another machine via SSH.
-   - You will be prompted to enter the target machine's name and the command to execute.
+---
 
-2. **Display IP Configuration**: 
-   - Shows the complete IP configuration of the current machine using the `ipconfig /all` command.
+## ✨ Fonctionnalités Principales
 
-3. **Ping**: 
-   - Tests connectivity to a specified IP address or hostname.
+### 🌐 Diagnostics & Administration Réseau
+* **Connexion / Exécution distante SSH :** Exécution de commandes à distance via `Invoke-Command`.
+* **Configuration IP & Diagnostics :** Affichage d'IPConfig, `ping`, `nslookup`, `tracert`.
+* **Scan Réseau rapide :** Balayage d'une plage d'adresses IP (`/24`) pour identifier les hôtes actifs.
+* **Diagnostic Réseau Rapide :** Test automatique de connectivité Internet (Ping DNS public 8.8.8.8, Google, résolution DNS).
+* **Wake-on-LAN (WoL) :** Envoi de paquets magiques (*Magic Packet*) sur le port UDP 4000 pour démarrer un poste à distance via son adresse MAC.
 
-4. **NSLookup**: 
-   - Queries DNS information for a specified IP address or hostname.
+### 🛡️ Gestion Active Directory (Sous-menus complets)
+* **Gestion des Utilisateurs :**
+  * Recherche par nom de famille (avec sélection interactive en cas de doublons).
+  * Consultations des informations détaillées et groupes d'appartenance.
+  * Ajout / Suppressions de groupes AD.
+  * Déplacement d'unité d'organisation (OU).
+  * Réinitialisation de mot de passe (avec forçage de changement à la prochaine session).
+  * Activation / Désactivation de compte.
+* **Gestion des Groupes :**
+  * Affichage des membres du groupe.
+  * Ajout / Suppression d'utilisateurs ou d'ordinateurs dans un groupe.
+  * Déplacement du groupe dans une OU.
+  * Export de la liste des membres au format CSV (`<NomGroupe>-members.csv`).
+* **Gestion des Ordinateurs :**
+  * Inspection des détails du poste et test Ping direct.
+  * Déplacement dans l'AD et gestion des groupes associés.
+  * Consultation du mot de passe Administrateur Local via **LAPS** (`Get-AdmPwdPassword`).
+  * Force la mise à jour des GPO à distance (`Invoke-GPUpdate`).
+  * Ouverture d'une session de commande distante.
+* **Statut de Réplication AD :** Exécution directe de `repadmin /replsum`.
 
-5. **GPUpdate /force**: 
-   - Forces a Group Policy update on a specified remote machine.
+### 🔄 Maintenance WSUS & GPO
+* **Réinitialisation WSUS (Local et Distant) :**
+  * Arrêt du service Windows Update (`wuauserv`).
+  * Nettoyage du dossier `C:\Windows\SoftwareDistribution`.
+  * Suppression de la clé de registre `SusClientId`.
+  * Redémarrage des services et re-détection immédiate (`wuauclt /resetauthorization /detectnow /reportnow`).
+  * Export automatique des logs Windows Update (`Get-WindowsUpdateLog`) et mise à jour GPO.
+* **GPUpdate /force :** Déclenchement à distance sur la machine ciblée.
 
-6. **Tracert**: 
-   - Traces the route taken to reach a specified IP address.
+---
 
-7. **Network Scan**: 
-   - Scans a specified range of IP addresses to check for active devices.
+## 🚀 Prérequis & Installation
 
-8. **Quick Network Diagnostic**: 
-   - Performs basic network diagnostics like pinging public DNS servers and resolving a domain name.
+### Prérequis
+* **Système d'exploitation :** Windows 10 / 11 ou Windows Server.
+* **Environnement :** PowerShell 5.1 ou PowerShell 7+.
+* **Modules PowerShell requis :**
+  * RSAT / Module Active Directory (`ActiveDirectory`).
+  * Support LAPS (Optionnel, pour la fonction de lecture du mot de passe admin local).
+* **Privilèges :** Exécution en tant qu'**Administrateur** recommandée (nécessaire pour la gestion AD, l'exécution distante `Invoke-Command` et l'arrêt des services local/distant).
 
-9. **Active Directory Management**: 
-   - Manage users, groups, and computers in Active Directory.
-   - Sub-menu includes options for viewing user/group details, adding/removing users from groups, and more.
+### Exécution
 
-10. **WSUS Management**: 
-    - Reset Windows Update configuration locally or on a remote machine.
+1. Clônez le dépôt ou téléchargez le fichier de script :
+   ```powershell
+   git clone [https://github.com/votre-user/CephaloShell.git](https://github.com/votre-user/CephaloShell.git)
+   cd CephaloShell
+   ```
 
-11. **Wake on LAN**: 
-    - Sends a Wake-on-LAN (WOL) packet to a specified machine to wake it remotely.
+2. Débloquez le fichier script si nécessaire :
+   ```powershell
+   Unblock-File -Path .\CephaloShell.ps1
+   ```
 
-## Notes
+3. Lancez le script dans une console PowerShell exécutée en tant qu'administrateur :
+   ```powershell
+   .\CephaloShell.ps1
+   ```
 
-- **Error Handling**: The script includes basic error handling to guide users through incorrect inputs.
-- **Permissions**: Some tasks may require administrative privileges on the local or remote machine.
-- **Customization**: This script can be extended or modified to suit specific network or system management needs.
+---
 
-## Disclaimer
+## 📖 Utilisation
 
-Use this script responsibly and ensure you have the necessary permissions to execute these commands on target machines.
+1. **Menu Principal :** Saisissez le numéro correspondant à la fonctionnalité souhaitée.
+2. **Navigation :** Pour retourner au menu précédent ou quitter le script, entrez la touche `q`.
+3. **Recherche AD :** Saisissez simplement le nom de l'utilisateur ou du groupe. Si plusieurs correspondances sont trouvées, un sous-menu numéroté vous permettra de sélectionner la bonne cible.
 
-## License
+---
 
-This project is licensed under the MIT License. See the `LICENSE` file for more details.
+## 📄 Licence
 
+Ce projet est sous licence MIT. Consulter le fichier `LICENSE` pour plus de détails.
