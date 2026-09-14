@@ -83,7 +83,7 @@ CephaloShell repose sur un menu interactif dynamique habillé d'une mascotte pou
 
 1. Clônez le dépôt ou téléchargez le fichier de script :
    ```powershell
-   git clone 
+   git clone https://github.com/CyberPoulpe/CephaloShell.git
    cd CephaloShell
    ```
 
