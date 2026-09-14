@@ -175,6 +175,9 @@ switch ($choix) {
                 }
                 1{
                     do {
+                        Clear-Host
+                        get-poulpe
+                        Show-MenuAD
                         $nomuserRecherche = Read-Host "Enter the user's last name (or 'q' to cancel the search)"
                         if ($nomuserRecherche -eq 'q') {
                             Write-Output "Research cancelled. Exiting script."
@@ -184,18 +187,37 @@ switch ($choix) {
                         if ($userRecherche.Count -eq 1) {
                             $selectedUser = $userRecherche[0]
                             Write-Output "User found: $($selectedUser.DisplayName) ($($selectedUser.SamAccountName))"
-                        } elseif ($userRecherche.Count -gt 1) {
+                        }
+                        elseif ($userRecherche.Count -gt 1) {
                             Write-Output "Multiple users found. Please select one:"
                             for ($i = 0; $i -lt $userRecherche.Count; $i++) {
                                 Write-Output "$($i+1): $($userRecherche[$i].DisplayName) ($($userRecherche[$i].SamAccountName))"
+                                #break
                             }
                             do {
-                                $selection = Read-Host "Enter the number corresponding to the user"
-                                $selectedIndex = [int]$selection - 1
+                                $selection = Read-Host "Enter the number corresponding to the user (or 'q' to quit)"
+                                if ($selection -eq 'q') {
+                                    Write-Output "User selection cancelled. Returning to previous menu..."
+                                    $selectedUser = $null
+                                    Start-Sleep -Milliseconds 700
+                                    Clear-Host
+                                    break
+                                }
+                                elseif ($selection -match '^\d+$') {
+                                    $selectedIndex = [int]$selection - 1
+                                }
+                                else {
+                                    $selectedIndex = -1
+                                }
                             } while ($selectedIndex -lt 0 -or $selectedIndex -ge $userRecherche.Count)
+
+                            if ($selection -eq 'q' -or -not $selectedUser -and ($selectedIndex -lt 0 -or $selectedIndex -ge $userRecherche.Count)) {
+                                break
+                            }
                             $selectedUser = $userRecherche[$selectedIndex]
                             Write-Output "You selected: $($selectedUser.DisplayName) ($($selectedUser.SamAccountName))"
-                        } else {
+                        }
+                        else {
                             Write-Output "No user found with last name '$nomuserRecherche'. Please try again."
                             continue
                         }
@@ -259,14 +281,28 @@ switch ($choix) {
                                         if ($nomgroupeADadd1_1 -eq 'q') {
                                             break
                                         }
+                                    
                                         $groupeRechercheADadd1_1 = Get-ADGroup -Filter {Name -eq $nomgroupeADadd1_1} -Property SamAccountName
                                         if ($groupeRechercheADadd1_1) {
                                             $groupeADadd1_1 = $($groupeRechercheADadd1_1.SamAccountName)
-                                            Write-Output "Added $nomUser1 to the $groupeADadd1_1..."
-                                            Add-ADGroupMember -Identity $groupeADadd1_1 -Members $nomUser1
-                                            Start-Sleep -Milliseconds 500
-                                            Write-Output "$nomUser1 was added to the $groupeADadd1_1"
-                                            Get-ADUser -Identity $nomUser1 -Property MemberOf | Select-Object -ExpandProperty MemberOf | ForEach-Object { ($_ -split ',')[0] -replace '^CN=' }
+                                    
+                                            # Vérification si l'utilisateur est déjà membre du groupe
+                                            $estMembre = Get-ADUser -Identity $nomUser1 -Property MemberOf | 
+                                                         Select-Object -ExpandProperty MemberOf | 
+                                                         ForEach-Object { ($_ -split ',')[0] -replace '^CN=' } |
+                                                         Where-Object { $_ -eq $groupeADadd1_1 }
+                                    
+                                            if ($estMembre) {
+                                                Write-Output "$nomUser1 is already a member of $groupeADadd1_1."
+                                            } else {
+                                                Write-Output "Adding $nomUser1 to $groupeADadd1_1..."
+                                                Add-ADGroupMember -Identity $groupeADadd1_1 -Members $nomUser1
+                                                Start-Sleep -Milliseconds 500
+                                                Write-Output "$nomUser1 was added to $groupeADadd1_1"
+                                                Get-ADUser -Identity $nomUser1 -Property MemberOf |
+                                                    Select-Object -ExpandProperty MemberOf |
+                                                    ForEach-Object { ($_ -split ',')[0] -replace '^CN=' }
+                                            }
                                         } else {
                                             Write-Output "No group found with the name '$nomgroupeADadd1_1'. Please try again."
                                         }
@@ -294,7 +330,10 @@ switch ($choix) {
                                     Start-Sleep -Milliseconds 500 | Clear-Host
                                 }
                                 5 {
-                                    $NomOU5 = Read-Host "What is the agent's new OU"
+                                    $NomOU5 = Read-Host "What is the agent's new OU or 'q' to cancel"
+                                    if ($nomOU5 -eq 'q') {
+                                        break
+                                    }
                                     $NomOURecherche5 = Get-ADOrganizationalUnit -Filter { Name -eq $NomOU5}
                                     $nomOUok5 = Get-ADOrganizationalUnit $nomOUrecherche5
                                     $Nom5 = Get-ADUser $nomUser1
@@ -335,20 +374,19 @@ switch ($choix) {
                                     }
                                     Pause | Clear-Host
                                 }
-
                                 default {
                                 Write-Output "Invalid choice !"
                                 Start-Sleep -Milliseconds 500
                                 }
                             }
                         } while ($choix1_1 -ne "q")
-                        break  # Sortie du script après avoir traité l'utilisateur sélectionné
+                        break
                     } while ($true)
                     Clear-Host
                 }
                 2{
                     do {
-                        $nomGroupeRecherche = Read-Host "Enter the group's name (or 'q' to cancel the search)"
+                        $nomGroupeRecherche = Read-Host "Enter the group's name (or 'q' to cancel the search)" -ErrorAction SilentlyContinue
                         if ($nomGroupeRecherche -eq 'q') {
                             Write-Output "Search cancelled. Exiting script."
                             break
@@ -364,6 +402,7 @@ switch ($choix) {
                                     $optionAD4_group = "Delete a user in $($groupeRecherche.SamAccountName)"
                                     $optionAD5_group = "Delete a computer in $($groupeRecherche.SamAccountName)"
                                     $optionAD6_group = "Move $($groupeRecherche.SamAccountName) in AD"
+                                    $optionAD7_group = "Export $($groupeRecherche.SamAccountName) in CSV"
                                     $exitADOption_group = "q. Return"
                                     $totalWidth = 90
                                     $border = ("-" * $totalWidth)
@@ -373,7 +412,7 @@ switch ($choix) {
                                         return $optionLine + (" " * ($totalWidth - ($optionLine.Length + 3)))
                                     }
                                     Write-Host " $border"
-                                    Write-Host "| Please choose a number : " + (" " * ($totalWidth - 30))"|"
+                                    Write-Host "| Please choose a number : "(" " * ($totalWidth - 30))"|"
                                     Write-Host " $border"
                                     Write-Host "| $(OptionAD_group 'Menu :' $nomGroupe1)|"
                                     Write-Host " $border"
@@ -383,6 +422,7 @@ switch ($choix) {
                                     Write-Host "| $(OptionAD_group 4 $optionAD4_group)|"
                                     Write-Host "| $(OptionAD_group 5 $optionAD5_group)|"
                                     Write-Host "| $(OptionAD_group 6 $optionAD6_group)|"
+                                    Write-host "| $(OptionAD_group 7 $optionAD7_group)|"
                                     Write-Host " $border"
                                     Write-Host "| $(OptionAD_group $exitADOption_group)|"
                                     Write-Host " $border"
@@ -403,19 +443,45 @@ switch ($choix) {
                                         do {
                                             $nomuserRechercheforADDGroup = Read-Host "Enter the user's last name (or 'q' to cancel the search)"
                                             if ($nomuserRechercheforADDGroup -eq 'q') {
+                                                Write-Output "Research cancelled. Exiting script."
                                                 break
-                                                Clear-Host
+                                            }elseif($nomuserRechercheforADDGroup -eq $null) {
+                                                continue
                                             }
-                                            $userRechercheforGourp = Get-ADUser -Filter {sn -eq $nomuserRechercheforADDGroup} -Property SamAccountName
-                                            if ($userRechercheforGourp) {
-                                                Write-Output "$nomuserRechercheforADDGroup's SamAccountName is : $($userRechercheforGourp.SamAccountName)"
-                                                $nomuserAdd1_2 = Read-Host "Enter the user's SamAccountName"
-                                                    Add-ADGroupMember -Identity $nomGroupe1 -Members $nomuserAdd1_2
-                                                    Write-Output "$nomuserAdd1_2 has been added to group $nomGroupe1"
+                                            $utilisateursTrouvés = @(Get-ADUser -Filter {sn -eq $nomuserRechercheforADDGroup} -Property SamAccountName, DisplayName)
+                                            $usersTrouves = Get-ADUser -Filter "sn -eq '$nomuserRechercheforADDGroup'" -Properties SamAccountName
+
+                                            if ($utilisateursTrouvés.Count -eq 1) {
+                                                $selectedUser = $utilisateursTrouvés[0]
+                                                Write-Output "User found: $($selectedUser.DisplayName) ($($selectedUser.SamAccountName))"
+                                            } 
+                                            elseif ($utilisateursTrouvés.Count -gt 1) {
+                                                Write-Output "Multiple users found. Please select one:"
+                                                for ($i = 0; $i -lt $utilisateursTrouvés.Count; $i++) {
+                                                    Write-Output "$($i+1): $($utilisateursTrouvés[$i].DisplayName) ($($utilisateursTrouvés[$i].SamAccountName))"
+                                                }
+                                                do {
+                                                    $selection = Read-Host "Enter the number corresponding to the user"
+                                                    $selectedIndex = [int]$selection - 1
+                                                } while ($selectedIndex -lt 0 -or $selectedIndex -ge $utilisateursTrouvés.Count)
+                                        
+                                                $selectedUser = $utilisateursTrouvés[$selectedIndex]
+                                                Write-Output "You selected: $($selectedUser.DisplayName) ($($selectedUser.SamAccountName))"
+                                            } 
+                                            else {
+                                                Write-Output "No user found with last name '$nomuserRechercheforADDGroup'. Please try again."
+                                                continue
+                                            }
+                                            $userSamAccount = $selectedUser.SamAccountName
+                                            $alreadyMember = Get-ADGroupMember -Identity $nomGroupe1 -Recursive |
+                                                             Where-Object { $_.SamAccountName -eq $selectedUser.SamAccountName }
+                                            if ($alreadyMember) {
+                                                Write-Warning "$($selectedUser.SamAccountName) est déjà dans le groupe $nomGroupe1"
                                             } else {
-                                                Write-Output "User with last name $nomuserRechercheforADDGroup not found. Please try again."
+                                                Add-ADGroupMember -Identity $nomGroupe1 -Members $selectedUser.SamAccountName
+                                                Write-Output "$($selectedUser.SamAccountName) a été ajouté au groupe $nomGroupe1"
                                             }
-                                        }while ($true)
+                                        } while ($true)
                                         Clear-Host
                                     }
                                     3 {
@@ -426,23 +492,40 @@ switch ($choix) {
                                         pause | Clear-Host
                                     }
                                     4 {
-                                        Get-ADGroupMember -Identity $nomGroupe1 | Select-Object
+                                        $membresGroupe = Get-ADGroupMember -Identity $nomGroupe1 | Where-Object { $_.objectClass -eq 'user' } | Get-ADUser -Properties DisplayName, Surname, SamAccountName
+                                        $membresGroupe | Select-Object DisplayName, SamAccountName
                                         do {
                                             $nomuserRechercheforRemoveGroup = Read-Host "Enter the user's last name (or 'q' to cancel the search)"
                                             if ($nomuserRechercheforRemoveGroup -eq 'q') {
+                                                Write-Output "Operation cancelled."
                                                 break
-                                                Clear-Host
                                             }
-                                            $userRechercheforGourp = Get-ADUser -Filter {sn -eq $nomuserRechercheforRemoveGroup} -Property SamAccountName
-                                            if ($userRechercheforGourp) {
-                                                Write-Output "$nomuserRechercheforRemoveGroup's SamAccountName is : $($userRechercheforGourp.SamAccountName)"
-                                                $nomuserDelet1_2 = Read-Host "Enter the user's SamAccountName"
-                                                Remove-ADGroupMember -Identity $nomGroupe1 -Members $nomuserDelet1_2
-                                                Write-Output "$nomuserDelet1_2 has been removed from group $nomGroupe1"
-                                            } else {
-                                                Write-Output "User with last name $nomuserRechercheforRemoveGroup not found. Please try again."
+                                            $utilisateursTrouvés = @($membresGroupe | Where-Object { $_.Surname -like "*$nomuserRechercheforRemoveGroup*" -or $_.Name -like "*$nomuserRechercheforRemoveGroup*" })
+
+                                            if ($utilisateursTrouvés.Count -eq 1) {
+                                                $selectedUser = $utilisateursTrouvés[0]
+                                                Write-Output "User found: $($selectedUser.DisplayName) ($($selectedUser.SamAccountName))"
                                             }
-                                        }while ($true)
+                                            elseif ($utilisateursTrouvés.Count -gt 1) {
+                                                Write-Output "Multiple users found in group. Please select one:"
+                                                for ($i = 0; $i -lt $utilisateursTrouvés.Count; $i++) {
+                                                    Write-Output "$($i+1): $($utilisateursTrouvés[$i].DisplayName) ($($utilisateursTrouvés[$i].SamAccountName))"
+                                                }
+                                                do {
+                                                    $selection = Read-Host "Enter the number corresponding to the user"
+                                                    $selectedIndex = [int]$selection - 1
+                                                } while ($selectedIndex -lt 0 -or $selectedIndex -ge $utilisateursTrouvés.Count)
+
+                                                $selectedUser = $utilisateursTrouvés[$selectedIndex]
+                                                Write-Output "You selected: $($selectedUser.DisplayName) ($($selectedUser.SamAccountName))"
+                                            }
+                                            else {
+                                                Write-Output "User with last name '$nomuserRechercheforRemoveGroup' not found in group $nomGroupe1. Please try again."
+                                                continue
+                                            }
+                                            Remove-ADGroupMember -Identity $nomGroupe1 -Members $selectedUser -Confirm:$false
+                                            Write-Output "$($selectedUser.SamAccountName) has been removed from group $nomGroupe1"
+                                        } while ($true)
                                         Clear-Host
                                     }
                                     5 {
@@ -462,6 +545,14 @@ switch ($choix) {
                                         Write-Output = "$nomGroupe1 was moved here: $NomOURecherche6"
                                         pause | Clear-Host
                                     }
+                                    7{
+                                        $exportPath = "$nomGroupe1-members.csv"
+                                        Get-ADGroupMember -Identity $nomGroupe1 |
+                                            Select-Object Name |
+                                            Export-Csv -Path $exportPath -NoTypeInformation -Encoding UTF8
+                                        Write-Host "Members of $nomGroupe1 exported to $exportPath"
+                                        pause | clear-host
+                                    }
                                     default {
                                         Write-Output "Invalid choice !"
                                         Start-Sleep -Milliseconds 500
@@ -469,6 +560,7 @@ switch ($choix) {
                                     }
                                 }
                             } while ($choix1_2 -ne "q")
+                            break
                         } else {
                             Write-Output "No group found with the name '$nomGroupeRecherche'. Please try again."
                         }
@@ -479,12 +571,13 @@ switch ($choix) {
                             do {
                                 function Show-MenuAD_PC {
                                     $optionAD1_PC = "See the info of $nomPC1"
-                                    $optionAD2_PC = "Move $nomPC1 in the AD"
-                                    $optionAD3_PC = "Add a $nomPC1 in group"
-                                    $optionAD4_PC = "Remove $nomPC1 in group"
-                                    $optionAD5_PC = "View $nomPC1 local password"
-                                    $optionAD6_PC = "Gpupdate /force"
-                                    $optionAD7_PC = "SSH"
+                                    $optionAD2_PC = "Ping $nomPC1"
+                                    $optionAD3_PC = "Move $nomPC1 in the AD"
+                                    $optionAD4_PC = "Add a $nomPC1 in group"
+                                    $optionAD5_PC = "Remove $nomPC1 in group"
+                                    $optionAD6_PC = "View $nomPC1 local password"
+                                    $optionAD7_PC = "Gpupdate /force"
+                                    $optionAD8_PC = "SSH"
                                     $exitADOption_PC = "q. Return"
                                     $totalWidth = 90
                                     $border = ("-" * $totalWidth)
@@ -505,6 +598,7 @@ switch ($choix) {
                                     Write-Host "| $(OptionAD_PC 5 $optionAD5_PC)|"
                                     write-host "| $(OptionAD_PC 6 $optionAD6_PC)|"
                                     write-host "| $(OptionAD_PC 7 $optionAD7_PC)|"
+                                    write-host "| $(OptionAD_PC 8 $optionAD8_PC)|"
                                     Write-Host " $border"
                                     Write-Host "| $(OptionAD_PC $exitADOption_PC)|"
                                     Write-Host " $border"
@@ -521,7 +615,11 @@ switch ($choix) {
                                 Get-ADComputer $nomPC1
                                 pause | Clear-Host
                             }
-                            2{  
+                            2{
+                                ping $nomPC1
+                                pause | clear-host
+                            }
+                            3{  
                                 $NomOUPC2 = Read-Host "What is the new OU of the PC"
                                 $NomOURecherche2 = Get-ADOrganizationalUnit -Filter { Name -eq $NomOUPC2}
                                 $nomOUok2 = Get-ADOrganizationalUnit $NomOURecherche2
@@ -530,31 +628,38 @@ switch ($choix) {
                                 Write-Output = "$nomPC1 was moved here: $NomOURecherche2"
                                 pause | Clear-Host
                             }
-                            3{
+                            4{
                                 $nomGroupeAdd1_3 = Read-Host "Witch group to add"
                                 $cheminPC1_3 = Get-ADComputer -Identity $nomPC1 | Select-Object DistinguishedName
                                 Add-ADGroupMember -Identity $nomGroupeAdd1_3 -Members $cheminPC1_3
                                 Write-Output "$nomPC1 has been added to group $nomGroupeAdd1_3"
                                 pause | Clear-Host
                             }
-                            4{
+                            5{
                                 $nomGroupRemove1_2 = Read-Host "which group should be deleted"
                                 $cheminPC1_2 = Get-ADComputer -Identity $nomPC1 | Select-Object DistinguishedName
                                 Remove-ADGroupMember -Identity $nomGroupRemove1_2 -Members $cheminPC1_2
                                 Write-Output "$nomPC1 has been removed to group $nomGroupRemove1_2"
                                 pause | Clear-Host
                             }
-                            5{
-                                $passwordPC1= Get-AdmPwdPassword -ComputerName $nomPC1 | Select-Object password
-                                Write-Output "The password is $passwordPC1"
-                                pause | Clear-Host
-                            }
                             6{
+                                $passwordObj = Get-AdmPwdPassword -ComputerName $nomPC1
+                                if ($passwordObj) {
+                                    $passwordValue = $passwordObj.Password
+                                    Write-Host "The local admin password for $nomPC1 is: $passwordValue"
+                                    pause
+                                } else {
+                                    Write-Host "No LAPS password found for $nomPC1."
+                                    pause
+                                }
+                                Clear-Host
+                            }
+                            7{
                                 Write-Output "Gpupdate /force"
                                 Invoke-GPUpdate -Computer $nomPC1 -RandomDelayInMinutes 0
                                 pause | Clear-Host
                             }
-                            7{
+                            8{
                                 do {
                                     $commande = Read-Host "Command to run (press q to exit)"
                                     if ($commande -eq 'q') {
@@ -718,7 +823,42 @@ switch ($choix) {
         Pause | Clear-Host
     }
     12{
-    write-output "write your code here ;p"
+                $userRecherche = @(Get-ADUser -Filter {sn -eq $nomuserRecherche} -Property SamAccountName, DisplayName)
+                
+                if ($userRecherche.Count -eq 1) {
+                    $selectedUser = $userRecherche[0]
+                    Write-Output "User found: $($selectedUser.DisplayName) ($($selectedUser.SamAccountName))"
+                }
+                elseif ($userRecherche.Count -gt 1) {
+                    Write-Output "Multiple users found. Please select one:"
+                    for ($i = 0; $i -lt $userRecherche.Count; $i++) {
+                        Write-Output "$($i+1): $($userRecherche[$i].DisplayName) ($($userRecherche[$i].SamAccountName))"
+                    }
+                
+                    do {
+                        $selection = Read-Host "Enter the number corresponding to the user (or 'q' to quit)"
+                        if ($selection -eq 'q') {
+                            Write-Output "Exiting selection..."
+                            break
+                        }
+                        elseif ($selection -match '^\d+$') {
+                            $selectedIndex = [int]$selection - 1
+                        }
+                        else {
+                            $selectedIndex = -1
+                        }
+                    } while ($selectedIndex -lt 0 -or $selectedIndex -ge $userRecherche.Count)
+                
+                    if ($selection -ne 'q') {
+                        $selectedUser = $userRecherche[$selectedIndex]
+                        Write-Output "You selected: $($selectedUser.DisplayName) ($($selectedUser.SamAccountName))"
+                    }
+                }
+                else {
+                    Write-Output "No user found with last name '$nomuserRecherche'. Please try again."
+                    continue
+                }
+
     pause | clear-host
     }
 }
